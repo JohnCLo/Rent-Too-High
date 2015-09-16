@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+  <head>
+    <style>
+      body {
+        font: 10px sans-serif;
+      }
+
+      rect.bordered {
+        stroke: white;
+        stroke-width:1px;   
+      }
+
+      text.mono {
+        font-size: 9pt;
+        font-family: Consolas, courier;
+        fill: #aaa;
+      }
+
+      text.axis-workweek {
+        fill: #000;
+      }
+
+      text.axis-worktime {
+        fill: #000;
+      }
+      .info {
+        padding: 30px;
+      }
+    </style>
+    <script src="http://d3js.org/d3.v3.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+  </head>
+  <body>
+    <div class="info">
+      <h2>Which Cities Consistently Get Hit the Hardest?</h2>
+      <p> After the Mortage Crisis of 2007-2009, most cities reversed from decline. However, cities such as Atlanta, Chicago, Cleveland, and Detroit still face decreasing home values 5 years after the crisis.</p>
+      <p><i>Hover over to see the dates and respective values.</i></p>
+      <select name="metric" id="metric">
+          <option value="% of Homes Decreasing in Value">% of Homes Decreasing in Value</option>
+          <option value="% of Homes Increasing in Value">% of Homes Increasing in Value</option>
+          <option value="Decrease in Average Price of 2 Bedroom">Decrease in Average Price of 2 Bedroom</option>
+          <option value="Foreclosures per 10000">Foreclosures per 10,000</option>
+          <option value="Median Rent">Median Rent</option>
+    </select> monthly from Jan. 2005 to Dec. 2014
+    </div>
+    <div id="chart"></div>
+
+    <script type="text/javascript">
+
+      var sliderValue = 1;
+
+      var originalData;
+
+      var heatmapData = [];
+      var selected_metric = "PCTOFHOMESDECREASINGINVALUES_ALLHOMES";
+      //var selected_metric = 'MEDIANLISTINGPRICE_ALLHOMES';
+
+      var sliderDateTranslate_2BEDROOM = {
+      1  :"2005-01-31",
+      2  :"2005-02-28",
+      3  :"2005-03-31",
+      4  :"2005-04-30",
+      5  :"2005-05-31",
+      6  :"2005-06-30",
+      7  :"2005-07-31",
+      8  :"2005-08-31",
+      9  :"2005-09-30",
+      10 :"2005-10-31",
+      11 :"2005-11-30",
+      12 :"2005-12-31",
+      13 :"2006-01-31",
+      14 :"2006-02-28",
+      15 :"2006-03-31",
+      16 :"2006-04-30",
+      17 :"2006-05-31",
+      18 :"2006-06-30",
+      19 :"2006-07-31",
+      20 :"2006-08-31",
+      21 :"2006-09-30",
+      22 :"2006-10-31",
+      23 :"2006-11-30",
+      24 :"2006-12-31",
+      25 :"2007-01-31",
+      26 :"2007-02-28",
+      27 :"2007-03-31",
+      28 :"2007-04-30",
+      29 :"2007-05-31",
+      30 :"2007-06-30",
+      31 :"2007-07-31",
+      32 :"2007-08-31",
+      33 :"2007-09-30",
+      34 :"2007-10-31",
+      35 :"2007-11-30",
+      36 :"2007-12-31",
+      37 :"2008-01-31",
+      38 :"2008-02-29",
+      39 :"2008-03-31",
+      40 :"2008-04-30",
+      41 :"2008-05-31",
+      42 :"2008-06-30",
+      43 :"2008-07-31",
+      44 :"2008-08-31",
+      45 :"2008-09-30",
+      46 :"2008-10-31",
+      47 :"2008-11-30",
+      48 :"2008-12-31",
+      49 :"2009-01-31",
+      50 :"2009-02-28",
+      51 :"2009-03-31",
+      52 :"2009-04-30",
+      53 :"2009-05-31",
+      54 :"2009-06-30",
+      55 :"2009-07-31",
+      56 :"2009-08-31",
+      57 :"2009-09-30",
+      58 :"2009-10-31",
+      59 :"2009-11-30",
+      60 :"2009-12-31",
+      61 :"2010-01-31",
+      62 :"2010-02-28",
+      63 :"2010-03-31",
+      64 :"2010-04-30",
+      65 :"2010-05-31",
+      66 :"2010-06-30",
+      67 :"2010-07-31",
+      68 :"2010-08-31",
+      69 :"2010-09-30",
+      70 :"2010-10-31",
+      71 :"2010-11-30",
+      72 :"2010-12-31",
+      73 :"2011-01-31",
+      74 :"2011-02-28",
+      75 :"2011-03-31",
+      76 :"2011-04-30",
+      77 :"2011-05-31",
+      78 :"2011-06-30",
+      79 :"2011-07-31",
+      80 :"2011-08-31",
+      81 :"2011-09-30",
+      82 :"2011-10-31",
+      83 :"2011-11-30",
+      84 :"2011-12-31",
+      85 :"2012-01-31",
+      86 :"2012-02-29",
+      87 :"2012-03-31",
+      88 :"2012-04-30",
+      89 :"2012-05-31",
+      90 :"2012-06-30",
+      91 :"2012-07-31",
+      92 :"2012-08-31",
+      93 :"2012-09-30",
+      94 :"2012-10-31",
+      95 :"2012-11-30",
+      96 :"2012-12-31",
+      97 :"2013-01-31",
+      98 :"2013-02-28",
+      99 :"2013-03-31",
+      100:"2013-04-30",
+      101:"2013-05-31",
+      102:"2013-06-30",
+      103:"2013-07-31",
+      104:"2013-08-31",
+      105:"2013-09-30",
+      106:"2013-10-31",
+      107:"2013-11-30",
+      108:"2013-12-31",
+      109:"2014-01-31",
+      110:"2014-02-28",
+      111:"2014-03-31",
+      112:"2014-04-30",
+      113:"2014-05-31",
+      114:"2014-06-30",
+      115:"2014-07-31",
+      116:"2014-08-31",
+      117:"2014-09-30",
+      118:"2014-10-31",
+      119:"2014-11-30",
+      120:"2014-12-31",
+      }
+      
+
+      var margin = { top: 20, right: 0, bottom: 100, left: 100 },
+          width = 1000 - margin.left - margin.right,
+          height = 440- margin.top - margin.bottom,
+          gridSize = Math.floor(width / 57),
+          legendElementWidth = gridSize*5,
+          buckets = 100000,
+          colors = ["#ffffd9","#edf8b1","#c7e9b4","#7fcdbb","#41b6c4","#1d91c0","#225ea8","#253494","#081d58"], // alternatively colorbrewer.YlGnBu[9]
+          city_numerics = [],
+          times = [];//["1a", "2a", "3a", "4a", "5a", "6a", "7a", "8a", "9a", "10a", "11a", "12a", "1p", "2p", "3p", "4p", "5p", "6p", "7p", "8p", "9p", "10p", "11p", "12p"];
+
+
+      d3.json("data/cities.json",
+        // function(d) {
+        //   return {
+        //     city_numeric: +d.city_numeric,
+        //     date_numeric: +d.date_numeric,
+        //     value: +d.value
+        //   };
+        // },
+        function(error, data) {
+          console.log(data);
+
+          originalData = data;
+
+          formatHeatmap_loss(data);
+          console.log(heatmapData);
+
+          var colorScale = d3.scale.quantile()
+              .domain([0, d3.max(heatmapData, function (d) { return d.value; })])
+              //.domain([0, buckets - 1, d3.max(data, function (d) { return d.value; })])
+              .range(colors);
+
+          var svg = d3.select("#chart").append("svg")
+              .attr("width", width + margin.left + margin.right)
+              .attr("height", height + margin.top + margin.bottom)
+              .append("g")
+              .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+          var city_numericLabels = svg.selectAll(".city_numericLabel")
+              .data(city_numerics)
+              .enter().append("text")
+                .text(function (d) { return d; })
+                .attr("x", 0)
+                .attr("y", function (d, i) { return i * gridSize; })
+                .style("text-anchor", "end")
+                .attr("transform", "translate(-6,-2)")     //" + gridSize / 1.5 + ")")
+                .attr("class", function (d, i) { return "city_numericLabel mono axis axis-workweek"; });
+
+          var timeLabels = svg.selectAll(".timeLabel")
+              .data(times)
+              .enter().append("text")
+                .text(function(d) { return d; })
+                .attr("x", function(d, i) { return i * gridSize; })
+                .attr("y", 0)
+                .style("text-anchor", "middle")
+                .attr("transform", "translate(" + gridSize / 2 + ", -6)")
+                //.attr("class", function(d, i) { return ((i >= 7 && i <= 16) ? "timeLabel mono axis axis-worktime" : "timeLabel mono axis"); });
+
+          var heatMap = svg.selectAll(".date_numeric")
+              .data(heatmapData)
+              .enter().append("rect")
+              .attr("x", function(d) { return ((d.date_numeric - 1) * gridSize)/2; })
+              .attr("y", function(d) { return (d.city_numeric - 1) * gridSize; })
+              //.attr("rx", 4)
+              //.attr("ry", 4)
+              .attr("class", "date_numeric bordered")
+              .attr("width", gridSize /2)
+              .attr("height", gridSize)
+              .style("fill", colors[0]);
+
+          heatMap.transition().duration(1000)
+              .style("fill", function(d) { 
+                if(!d.value){ return "#F9FAFA"}
+                return colorScale(d.value); 
+              });
+
+          heatMap.append("title").text(function(d) { 
+            return d.date_actual +": "+d.value; 
+          });
+              
+          var legend = svg.selectAll(".legend")
+              .data([0].concat(colorScale.quantiles()), function(d) { return d; })
+              .enter().append("g")
+              .attr("class", "legend");
+
+          legend.append("rect")
+            .attr("class","legend-rect")
+            .attr("x", function(d, i) { return legendElementWidth * i; })
+            .attr("y", height)
+            .attr("width", legendElementWidth)
+            .attr("height", gridSize / 2)
+            .style("fill", function(d, i) { return colors[i]; });
+
+          legend.append("text")
+            .attr("id","legend-text")
+            .attr("class", "mono")
+            .text(function(d) { return "≥ " + Math.round(d); })
+            .attr("x", function(d, i) { return legendElementWidth * i; })
+            .attr("y", height + gridSize + 3);
+      });
+
+function formatHeatmap(data){
+  var parseDate = d3.time.format("%Y-%m-%d").parse;
+
+  for (var i = 0; i < data.length; i++) {
+    city_numerics.push(data[i].city_name.slice(0,data[i].city_name.length - 2));
+    for (var j = 1; j < 74; j++) {
+      var heatmapObject_value = {};
+      heatmapObject_value['city_numeric'] = i;
+      heatmapObject_value['date_numeric'] = j;
+      heatmapObject_value['value'] = data[i][selected_metric][sliderDateTranslate[j]];
+      heatmapData.push(heatmapObject_value);
+    };
+  };
+}
+
+function formatHeatmap_loss(data){
+  heatmapData = [];
+  var parseDate = d3.time.format("%Y-%m-%d").parse;
+
+  for (var i = 0; i < data.length; i++) {
+    city_numerics.push(data[i].city_name.slice(0,data[i].city_name.length - 2));
+    // Start at second date since no difference available for 1st date
+    for (var j = 1; j < 121; j++) {
+      var heatmapObject_value = {};
+      heatmapObject_value['city_numeric'] = i;
+      heatmapObject_value['date_numeric'] = j;
+      heatmapObject_value['date_actual'] = sliderDateTranslate_2BEDROOM[j];
+
+      // var difference = data[i][selected_metric][sliderDateTranslate_2BEDROOM[j]] - data[i][selected_metric][sliderDateTranslate_2BEDROOM[j-1]];
+      // if (difference < 0){
+      //   difference = Math.abs(difference);
+      // } else {
+      //   difference = 0;
+      // }
+      difference = data[i][selected_metric][sliderDateTranslate_2BEDROOM[j]];
+      //console.log(difference);
+
+      // Fill empty values with last previous value, recursive function
+      // function findLast(n){
+      //   difference = data[i][selected_metric][sliderDateTranslate_2BEDROOM[j-n]]
+      //   n++;
+      //   if(!difference){findLast(n)}
+      // }
+      // if (!difference){findLast(1);}
+
+      // Push values
+      heatmapObject_value['value'] = difference
+      heatmapData.push(heatmapObject_value);
+    };
+  };
+}
+
+function formatHeatmap_loss_2Bedroom(data){
+  heatmapData = [];
+  var parseDate = d3.time.format("%Y-%m-%d").parse;
+
+  for (var i = 0; i < data.length; i++) {
+    city_numerics.push(data[i].city_name.slice(0,data[i].city_name.length - 2));
+    // Start at second date since no difference available for 1st date
+    for (var j = 1; j < 121; j++) {
+      var heatmapObject_value = {};
+      heatmapObject_value['city_numeric'] = i;
+      heatmapObject_value['date_numeric'] = j;
+      heatmapObject_value['date_actual'] = sliderDateTranslate_2BEDROOM[j];
+
+      var difference = data[i][selected_metric][sliderDateTranslate_2BEDROOM[j]] - data[i][selected_metric][sliderDateTranslate_2BEDROOM[j-1]];
+      if (difference < 0){
+        difference = Math.abs(difference);
+      } else if (difference == 0) {
+        difference = 0;
+      } else if (difference > 0) {
+        difference = 0
+      }
+
+      // Push values
+      heatmapObject_value['value'] = difference
+      heatmapData.push(heatmapObject_value);
+    };
+  };
+}
+
+// Metric Control
+$("#metric").on("change", function(){
+  //console.log(this.value);
+  if(this.value == "% of Homes Decreasing in Value"){selected_metric = 'PCTOFHOMESDECREASINGINVALUES_ALLHOMES'};
+  if(this.value == "% of Homes Increasing in Value"){selected_metric = 'PCTOFHOMESINCREASINGINVALUES_ALLHOMES'};
+  if(this.value == "Decrease in Average Price of 2 Bedroom"){selected_metric = '2BEDROOM'};
+  if(this.value == "Foreclosures per 10000"){selected_metric = 'HOMESSOLDASFORECLOSURESRATIO_ALLHOMES'};
+  if(this.value == "Median Rent"){selected_metric = 'MEDIANRENTALPRICE_ALLHOMES'};
+  //ZRIPERSQFT_ALLHOMES
+  //MEDIANSOLDPRICEPERSQFT_ALLHOMES
+  console.log(selected_metric);
+  update();
+});
+
+
+function update(){
+
+  if (selected_metric == "2BEDROOM"){
+    formatHeatmap_loss_2Bedroom(originalData)
+  } else {
+    formatHeatmap_loss(originalData);
+  }
+
+  var colorScale_updated = d3.scale.quantile()
+      .domain([0, d3.max(heatmapData, function (d) { return d.value; })])
+      //.domain([0, buckets - 1, d3.max(data, function (d) { return d.value; })])
+      .range(colors);
+
+  var svg = d3.select("#chart");
+
+  var heatMap = svg.selectAll(".date_numeric")
+      .data(heatmapData)
+      .attr("x", function(d) { return ((d.date_numeric - 1) * gridSize)/2; })
+      .attr("y", function(d) { return (d.city_numeric - 1) * gridSize; })
+      //.attr("rx", 4)
+      //.attr("ry", 4)
+      .attr("class", "date_numeric bordered")
+      .attr("width", gridSize /2)
+      .attr("height", gridSize)
+      .style("fill", colors[0]);
+
+  heatMap.transition().duration(1000)
+    .style("fill", function(d) { 
+      if(!d.value){ return "#F9FAFA" }
+      else {return colorScale_updated(d.value)};
+    });
+
+  heatMap.selectAll("title").remove();
+
+  heatMap.append("title").text(function(d) { 
+    return d.date_actual +": "+d.value; 
+  });
+
+  svg.selectAll("#legend-text").remove();
+  //svg.selectAll(".legend").remove()
+  var legend = svg.selectAll(".legend")
+    .data([0].concat(colorScale_updated.quantiles()), function(d) { return d; })
+    .append("text")
+            .attr("id","legend-text")
+            .attr("class", "mono")
+            .text(function(d) { return "≥ " + Math.round(d); })
+            .attr("x", function(d, i) { return legendElementWidth * i; })
+            .attr("y", height + gridSize + 3)
+
+}
+
+    </script>
+  </body>
+</html>

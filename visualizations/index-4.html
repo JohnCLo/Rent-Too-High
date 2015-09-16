@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.area.above {
+  fill:rgb(145,207,96);
+}
+
+.area.below {
+  fill: #F63838;
+}
+
+.line {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+
+.info{
+  padding-left:20px;
+  padding-bottom:20px;
+}
+
+</style>
+<body>
+
+  <div class="info">
+    <h1> Is the rent too damn high?</h1>
+    <p>Below are plots of the average monthly rent values and average monthly mortgage payment of each 20-index US city. Red indicates, yes in fact the rent is too damn high in this city and is probably best to buy an averaged price home instead. Green indicates, no the rent is not higher than average monthly mortgage payments (assuming an interest rate of 2.5% over a mortgage period of 30 years) and it would be economically sensible to rent in this city.</p>
+  </div>
+  <div id="graph">
+  </div>
+
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script>
+
+var dateTranslate = {
+  1:"2010-03-31", 
+  2:"2010-04-30", 
+  3:"2010-05-31", 
+  4:"2010-06-30", 
+  5:"2010-07-31", 
+  6:"2010-08-31", 
+  7:"2010-09-30", 
+  8:"2010-10-31", 
+  9:"2010-11-30", 
+  10:"2010-12-31",  
+  11:"2011-01-31",  
+  12:"2011-02-28",  
+  13:"2011-03-31",  
+  14:"2011-04-30",  
+  15:"2011-05-31",  
+  16:"2011-06-30",  
+  17:"2011-07-31",  
+  18:"2011-08-31",  
+  19:"2011-09-30",  
+  20:"2011-10-31",  
+  21:"2011-11-30",  
+  22:"2011-12-31",  
+  23:"2012-01-31",  
+  24:"2012-02-29",  
+  25:"2012-03-31",  
+  26:"2012-04-30",  
+  27:"2012-05-31",  
+  28:"2012-06-30",  
+  29:"2012-07-31",  
+  30:"2012-08-31",  
+  31:"2012-09-30",  
+  32:"2012-10-31",  
+  33:"2012-11-30",  
+  34:"2012-12-31",  
+  35:"2013-01-31",  
+  36:"2013-02-28",  
+  37:"2013-03-31",  
+  38:"2013-04-30",  
+  39:"2013-05-31",  
+  40:"2013-06-30",  
+  41:"2013-07-31",  
+  42:"2013-08-31",  
+  43:"2013-09-30",  
+  44:"2013-10-31",  
+  45:"2013-11-30",  
+  46:"2013-12-31",  
+  47:"2014-01-31",  
+  48:"2014-02-28",  
+  49:"2014-03-31",  
+  50:"2014-04-30",  
+  51:"2014-05-31",  
+  52:"2014-06-30",  
+  53:"2014-07-31",  
+  54:"2014-08-31",
+  55:"2014-09-30",
+  56:"2014-10-31",
+  57:"2014-11-30"
+}
+
+var cityTranslate = {
+  "LASVEGASNV":0,
+  "SANFRANCISCOCA":1,
+  "MIAMIFL":2,
+  "LOSANGELESCA":3,
+  "DETROITMI":4,
+  "SANDIEGOCA":5,
+  "PORTLANDOR":6,
+  "TAMPAFL":7,
+  "SEATTLEWA":8,
+  "ATLANTAGA":9,
+  "DALLASTX":10,
+  "DENVERCO":11,
+  "BOSTONMA":12,
+  "PHOENIXAZ":13,
+  "MINNEAPOLISMN":14,
+  "CHICAGOIL":15,
+  "WASHINGTONDC":16,
+  "NEWYORKNY":17,
+  "CHARLOTTENC":18,
+  "CLEVELANDOH":19
+}
+
+var cityTranslate_reverse = [
+"LASVEGASNV",
+//"SANFRANCISCOCA",
+"MIAMIFL",
+"LOSANGELESCA",
+"DETROITMI",
+"SANDIEGOCA",
+"PORTLANDOR",
+"TAMPAFL",
+"SEATTLEWA",
+"ATLANTAGA",
+"DALLASTX",
+"DENVERCO",
+"BOSTONMA",
+"PHOENIXAZ",
+"MINNEAPOLISMN",
+"CHICAGOIL",
+"WASHINGTONDC",
+"NEWYORKNY",
+"CHARLOTTENC",
+"CLEVELANDOH"
+]
+
+for (var i = 0; i < 19; i++) {
+  createDiffGraph(cityTranslate_reverse[i]);
+};
+
+function createDiffGraph (selectedCity){
+  d3.json("data/cities.json", function(error, data) {
+
+  var selected_metric;
+  var cityData = [];
+  var originalData;
+
+  var margin = {top: 20, right: 20, bottom: 30, left: 50},
+    width = 200 - margin.left - margin.right,
+    height = 150 - margin.top - margin.bottom;
+
+  var parseDate = d3.time.format("%Y%m%d").parse;
+
+  var parseDateData = d3.time.format("%Y-%m-%d").parse;
+
+  var x = d3.time.scale()
+      .range([0, width]);
+
+  var y = d3.scale.linear()
+      .range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+      .scale(x)
+      .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+      .scale(y)
+      .orient("left");
+
+  var line = d3.svg.area()
+      .interpolate("basis")
+      .x(function(d) { return x(d["date"]); })
+      .y(function(d) { return y(d["rent"]); });
+
+  var area = d3.svg.area()
+      .interpolate("basis")
+      .x(function(d) { return x(d["date"]); })
+      .y1(function(d) { return y(d["rent"]); });
+
+  var svg = d3.select("#graph").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    originalData = data;
+    //console.log(selectedCity);
+    //console.log(data);
+    
+    for (var i = 5; i < 58; i++) {
+      var object = {};
+      object["rent"]= data[cityTranslate[selectedCity]]["MEDIANRENTALPRICE_ALLHOMES"][dateTranslate[i]]
+      object["mortage_payment"]=(data[cityTranslate[selectedCity]]["MEDIANLISTINGPRICE_ALLHOMES"][dateTranslate[i]])*(0.035/12*Math.pow((1+0.035/12),360))/(Math.pow((1+0.035/12),360)-1)
+      object["date"] = parseDateData(dateTranslate[i]);
+      if(object["rent"] > 20000){object["rent"] = null}
+      if(!object["rent"]){object["rent"] = null}
+      if(!object["mortage_payment"]){object["mortage_payment"] = null}
+      cityData.push(object);
+    };
+
+    //console.log(cityData);
+
+    var data = cityData;
+
+    x.domain(d3.extent(data, function(d) { return d.date; }));
+
+    //console.log(d3.min(data, function(d) { return Math.min(d["rent"], d["mortage_payment"]); }));
+    //console.log(d3.min(data, function(d) { return Math.max(d["rent"], d["mortage_payment"]); }));
+
+    y.domain([
+      d3.min(data, function(d) { return Math.min(d["rent"], d["mortage_payment"]); }),
+      d3.max(data, function(d) { return Math.max(d["rent"], d["mortage_payment"]); })
+    ]);
+
+    svg.data([data]);
+
+
+    svg.append("clipPath")
+        .attr("id", "clip-below")
+      .append("path")
+        .attr("d", area.y0(height));
+
+    svg.append("clipPath")
+        .attr("id", "clip-above")
+      .append("path")
+        .attr("d", area.y0(0));
+
+    svg.append("path")
+        .attr("class", "area above")
+        .attr("clip-path", "url(#clip-above)")
+        .attr("d", area.y0(function(d) { return y(d["mortage_payment"]); }));
+
+    svg.append("path")
+        .attr("class", "area below")
+        .attr("clip-path", "url(#clip-below)")
+        .attr("d", area);
+
+    svg.append("path")
+        .attr("class", "line")
+        .attr("d", line);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .append("text")
+        .text(selectedCity)
+        .attr("dx", 10)
+        //.style("text-anchor", "end")
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      // //.append("text")
+      //   .attr("transform", "rotate(-90)")
+      //   .attr("y", 6)
+      //   .attr("dy", ".71em")
+      //   .style("text-anchor", "end")
+  });
+}
+
+
+</script>

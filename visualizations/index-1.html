@@ -1,0 +1,1058 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="css/bootstrap_grid.css">
+<style>
+body {
+  font: 10px sans-serif;
+}
+
+/* Map Styles */
+
+.state-boundary {
+  fill: none;
+  stroke: #fff;
+}
+
+
+.land {
+  fill: #ddd;
+}
+
+.border {
+  fill: none;
+  stroke: #fff;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.bubble {
+  fill: brown;
+  fill-opacity: .5;
+  stroke: #fff;
+  stroke-width: .5px;
+}
+
+.bubble :hover {
+  stroke: #000;
+}
+
+.legend circle {
+  fill: none;
+  stroke: #ccc;
+}
+
+.legend text {
+  fill: #777;
+  font: 10px sans-serif;
+  text-anchor: middle;
+}
+
+.range_length{
+  width:400px;
+}
+
+/* Chart Styles*/
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.line {
+  fill: none;
+  stroke: #FFAC00; /*steelblue;*/
+  stroke-width: 1.5px;
+}
+
+/* Table Styles */
+table {
+  border-collapse: collapse;
+  width:420px;
+}
+th {
+  border-bottom: 2px solid #ddd;
+  padding: 4px;
+  font-weight: bold;
+}
+td {
+  padding: 0px;
+  border-top: 1px solid #ddd;
+}
+#td_medianlistprice {
+  text-align:center;
+}
+#chart {
+  padding: 0px;
+}
+.xaxislabel {
+  font-size: 9px;
+}
+
+#slider_area{
+  margin-left:19px;
+}
+.info_area{
+  padding-left: 30px;
+}
+
+
+/* Selected Chart Styles */
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.line {
+  fill: none;
+  stroke: #FFAC00;;
+  stroke-width: 1.5px;
+}
+
+.overlay {
+  fill: none;
+  pointer-events: all;
+}
+
+.focus circle {
+  fill: none;
+  stroke: #FFAC00;;
+}
+
+</style>
+<body>
+<div class="row">
+  <div class="col-md-5" id="map_area"></div>
+  <div class="col-md-1"></div>
+  <div class="col-md-4" id="chart_area"></div>
+</div>
+<div class="row">
+  <div class="col-md-5">
+    <div class="info_area">
+      <h2>
+        <select name="metric" id="metric">
+          <option value="Median Listing Prices">Median Listing Prices</option>
+          <option value="2 Bedroom Prices">2 Bedroom Prices</option>
+          <option value="Rental Prices">Rental Prices</option>
+          <option value="Foreclosures per 10000">Foreclosures per 10,000</option>
+        </select>
+        After the Mortgage Crisis
+      </h2>
+      <p>The U.S. subprime mortgage crisis was a nationwide banking emergency that coincided with the U.S. recession of December 2007 – June 2009. It was triggered by a large decline in home prices, leading to mortgage delinquencies and foreclosures and the devaluation of housing-related securities.</p>
+      <i> Click on a City, Line, or Row to explore the post-effects on the 20 city index. Also, click the play button to see the progression through time. Note: If you don't see anything, scroll the slider as the data might not be available for earlier time periods.</i>
+      <div id="selected_area"></div>
+    </div>
+  </div>
+  <div class="col-md-1"></div>
+  <div class="col-md-4" id="table_area">
+    <div id="slider_area">
+      <div id="date">November 2008</div>
+      <input class="range_length" type="range" name="points" min="1" max="73" step="1" value="1" id="slider-time">
+      <br/>
+      <button type="button" id="play_button">►</button><button type="button" id="pause_button">❚❚</button><button type="button" id="stop_button">◼</button>
+    </div>
+  </div>
+</div>
+
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+<script src="http://d3js.org/queue.v1.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script>
+
+var sliderValue = 1;
+
+var selected_metric = 'MEDIANLISTINGPRICE_ALLHOMES';
+
+var sliderDateTranslate = {
+1:"2008-11-30",
+2:"2008-12-31",
+3:"2009-01-31",
+4:"2009-02-28",
+5:"2009-03-31",
+6:"2009-04-30",
+7:"2009-05-31",
+8:"2009-06-30",
+9:"2009-07-31",
+10:"2009-08-31",
+11:"2009-09-30",
+12:"2009-10-31",
+13:"2009-11-30",
+14:"2009-12-31",
+15:"2010-01-31",
+16:"2010-02-28",
+17:"2010-03-31",
+18:"2010-04-30",
+19:"2010-05-31",
+20:"2010-06-30",
+21:"2010-07-31",
+22:"2010-08-31",
+23:"2010-09-30",
+24:"2010-10-31",
+25:"2010-11-30",
+26:"2010-12-31",
+27:"2011-01-31",
+28:"2011-02-28",
+29:"2011-03-31",
+30:"2011-04-30",
+31:"2011-05-31",
+32:"2011-06-30",
+33:"2011-07-31",
+34:"2011-08-31",
+35:"2011-09-30",
+36:"2011-10-31",
+37:"2011-11-30",
+38:"2011-12-31",
+39:"2012-01-31",
+40:"2012-02-29",
+41:"2012-03-31",
+42:"2012-04-30",
+43:"2012-05-31",
+44:"2012-06-30",
+45:"2012-07-31",
+46:"2012-08-31",
+47:"2012-09-30",
+48:"2012-10-31",
+49:"2012-11-30",
+50:"2012-12-31",
+51:"2013-01-31",
+52:"2013-02-28",
+53:"2013-03-31",
+54:"2013-04-30",
+55:"2013-05-31",
+56:"2013-06-30",
+57:"2013-07-31",
+58:"2013-08-31",
+59:"2013-09-30",
+60:"2013-10-31",
+61:"2013-11-30",
+62:"2013-12-31",
+63:"2014-01-31",
+64:"2014-02-28",
+65:"2014-03-31",
+66:"2014-04-30",
+67:"2014-05-31",
+68:"2014-06-30",
+69:"2014-07-31",
+70:"2014-08-31",
+71:"2014-09-30",
+72:"2014-10-31",
+73:"2014-11-30"
+}
+
+var monthTranslate = {
+"01":"January",
+"02":"Febuary",
+"03":"March",
+"04":"April",
+"05":"May",
+"06":"June",
+"07":"July",
+"08":"August",
+"09":"September",
+"10":"October",
+"11":"November",
+"12":"December"
+}
+
+var originalData;
+var chartData = [];
+var chartDataPercentage = [];
+
+var selectedCity;
+var selectedCityData;
+
+var width = 500,
+    height = 300;
+
+var formatNumber = d3.format(",.0f");
+
+////////////// Map Setup ///////////////////////
+
+var rateById = d3.map();
+
+var projection = d3.geo.albersUsa()
+    .scale(550)
+    .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+    .projection(projection)
+
+var radius = d3.scale.linear()
+    .domain([0, 800000])
+    .range([0, 40]);
+
+var svg_map = d3.select("#map_area").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var legend = svg_map.append("g")
+    .attr("class", "legend")
+    .attr("transform", "translate(" + (width - 50) + "," + (height - 20) + ")")
+  .selectAll("g")
+    .data([200000, 400000, 800000])
+  .enter().append("g");
+
+legend.append("circle")
+    .attr("cy", function(d) { return -radius(d); })
+    .attr("r", radius);
+
+legend.append("text")
+    .attr("y", function(d) { return -2 * radius(d); })
+    .attr("dy", "1.3em")
+    .text(d3.format(".1s"));
+
+////////////// Chart Setup ///////////////////
+
+var margin = {top: 20, right: 80, bottom: 30, left: 30},
+    width_chart = 380 //- margin.left - margin.right,
+    height_chart = 300 //- margin.top - margin.bottom;
+
+var parseDate = d3.time.format("%Y-%m-%d").parse;
+
+var x = d3.time.scale()
+    .range([0, width_chart]);
+
+var y = d3.scale.linear()
+    .range([height_chart, 0]);
+
+var color = d3.scale.category10();
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+var line = d3.svg.line()
+    .interpolate("basis")
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.metric); });
+
+var svg_chart = d3.select("#chart_area").append("svg")
+    .attr("width", width_chart + margin.left + margin.right)
+    .attr("height", height_chart + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+/////////////////////////////////////////////////////
+
+
+queue()
+    .defer(d3.json, "us-albers2.json")
+    // .defer(d3.json, "data/cities.json", function(d) {
+    //   //console.log(d);
+    // })
+    .await(ready);
+
+function ready(error, us) {
+
+  if (error) return console.error(error);
+
+  svg_map.insert("path", ".graticule")
+      .datum(topojson.feature(us, us.objects.land))
+      .attr("class", "land")
+      .attr("d", path);
+
+  svg_map.insert("path", ".graticule")
+      .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
+      .attr("class", "state-boundary")
+      .attr("d", path);
+
+  // load and display the cities
+  d3.json("data/cities.json", function(error, data) {
+    console.log(data);
+    originalData = data;
+
+    svg_map.append("g")
+    .attr("class","bubble")
+    .selectAll("circle")
+       .data(data)
+       .enter()
+       // .append("a")
+       //    .attr("xlink:href", function(d) {
+       //      return "http://cs171.org";}
+       //    )
+       .append("circle")
+       .attr("class","circle-bubble")
+       .attr("id", function(d){return d.city_name+"_map"})
+       .attr("cx", function(d) {
+          return projection([d.longitude, d.latitude])[0];
+       })
+       .attr("cy", function(d) {
+          return projection([d.longitude, d.latitude])[1];
+       })
+       .attr("r", function(d){
+          //console.log(d[selected_metric]);
+          if(!d[selected_metric][sliderDateTranslate[sliderValue]]){return 1}
+          return d[selected_metric][sliderDateTranslate[sliderValue]]/20000;
+       })
+       .style("fill", "red")
+       .on("click", function(d){
+          highlight(d);
+        })
+       .append("title")
+        .text(function(d) {
+          //console.log(d);
+          return d.city_name + "\n"+ selected_metric+": " + "$"+formatNumber(d[selected_metric][sliderDateTranslate[sliderValue]]);
+        });
+
+
+    //////////////////////////////////// Chart //////////////////////////////////////////
+
+    var initial_chartData = [];
+
+    for (var i = 1; i < 74; i++) {
+      var chartObject = {};
+      chartObject['date'] = parseDate(sliderDateTranslate[i]);
+      //console.log(i);
+      //console.log(sliderDateTranslate[i]);
+
+      for (var j = 0; j < originalData.length; j++) {
+        chartObject[originalData[j].city_name] = originalData[j][selected_metric][sliderDateTranslate[i]]
+      };
+      initial_chartData.push(chartObject);
+    };
+
+    dataFormat(originalData);
+    percentageDataFormat(originalData);
+    console.log(chartDataPercentage);
+
+    var cities = chartDataPercentage;
+    //var cities = chartData;
+
+    x.domain(d3.extent(initial_chartData, function(d) { return d.date; }));
+
+    y.domain([10,220])
+    // y.domain([
+    //   d3.min(cities, function(c) { return d3.min(c.values, function(v) { return v.metric; }); }),
+    //   d3.max(cities, function(c) { return d3.max(c.values, function(v) { return v.metric; }); })
+    // ]);
+
+    svg_chart.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
+    svg_chart.append("svg:line")
+      .attr("x1", 0)
+      .attr("x2", 380)
+      .attr("y1", 170)
+      .attr("y2", 170)
+      .style("stroke", "#000")
+      .style("shape-rendering","crispEdges")
+      .style("fill","none");
+
+    svg_chart.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text(function(d){
+            if(selected_metric = 'MEDIANLISTINGPRICE_ALLHOMES'){ return '% Change in Median Listing Price'};
+            if(selected_metric = '2BEDROOM'){ return '% Change in Two Bedroom Price'};
+            if(selected_metric = 'MEDIANRENTALPRICE_ALLHOMES'){ return '% Change in Meidan Rental Price'};
+            if(selected_metric = 'HOMESSOLDASFORECLOSURESRATIO_ALLHOMES'){ return '% Change in Foreclosures Per 10,000 Homes'};
+        });
+
+    var city = svg_chart.selectAll(".city")
+        .data(cities)
+      .enter().append("g")
+        .attr("class", "city");
+
+    city.append("path")
+        .attr("class", "line")
+        .attr("id", function(d){ return d.city_name+"_chart"})
+        .attr("d", function(d) { return line(d.values); })
+        .style("stroke", function(d) { 
+          return "#DDDDDD"
+          //return color(d.name); 
+        })
+        .on("click", function(d){
+          highlight(d);
+        })
+
+    city.append("text")
+        .datum(function(d) { return {city_name: d.city_name, value: d.values[d.values.length - 1]}; })
+        .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.metric) + ")"; })
+        .attr("x", 3)
+        .attr("dy", ".35em")
+        .style("opacity", 0.6)
+        .attr("class","chart-text")
+        .attr("id", function(d){return d.city_name+"_text"})
+        .text(function(d) { 
+          // Removes State portion from City ie. DALLASTX, removes TX
+          return d.city_name.slice(0,d.city_name.length - 2); 
+        });
+
+    /////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////// Table /////////////////////////////////////////////////
+
+    //console.log(data);
+    var table = d3.select("#table_area").append("table");
+        thead = table.append("thead");
+        tbody = table.append("tbody");
+
+    thead.append("th").text("City").style('text-align','right');
+    thead.append("th").text("Median Listing Price").style('text-align','right');
+    thead.append("th").text("Since"+" "+sliderDateTranslate[sliderValue]).style('text-align','right');
+    thead.append("th").text("Since Peak").style('text-align','right');
+
+    var tr = tbody.selectAll("tr")
+        .data(data)
+        .enter().append("tr")
+        .attr("id",function(d){return d.city_name+"_table"})
+        .on("click", function(d){
+          highlight(d);
+        })
+
+    var row_counter = 0;
+    var format_decimal = d3.format(".3n");
+    var format_money = d3.format("$,.4r")
+
+    var td = tr.selectAll("td")
+       .data(function(d) { 
+         //console.log(d.city_name.length-2);
+
+         var peak = 0;
+         for (var i = 1; i < 74; i++) {
+           if (d[selected_metric][sliderDateTranslate[i]] > peak){
+            peak = d[selected_metric][sliderDateTranslate[i]]
+           }
+         };
+
+         var changeSinceDate;
+         if (d[selected_metric][sliderDateTranslate[73]]/d[selected_metric][sliderDateTranslate[sliderValue]] < 1){
+            changedSinceDate = (((d[selected_metric][sliderDateTranslate[73]]/d[selected_metric][sliderDateTranslate[sliderValue]]) - 1)) * 100;
+         } else if (d[selected_metric][sliderDateTranslate[73]]/d[selected_metric][sliderDateTranslate[sliderValue]] == 1){
+            changedSinceDate = 0;
+         } else {
+            changedSinceDate = d[selected_metric][sliderDateTranslate[73]]/d[selected_metric][sliderDateTranslate[sliderValue]] * 100;
+         }
+
+         var sincePeak;
+         if (d[selected_metric][sliderDateTranslate[73]]/peak < 1){
+            sincePeak = ((d[selected_metric][sliderDateTranslate[73]]/peak) -1)*100;
+         } else if (d[selected_metric][sliderDateTranslate[73]]/peak == 1) {
+            sincePeak = 0;
+         } else {
+            sincePeak = d[selected_metric][sliderDateTranslate[73]]/peak * 100;
+         }
+
+         return [
+          d.city_name.slice(0,d.city_name.length-2),
+          d[selected_metric][sliderDateTranslate[sliderValue]],
+          changedSinceDate,
+          sincePeak
+         ]
+       })
+       //TODO format individual rows?
+       .enter().append("td")
+       .text(function(d) { 
+        row_counter++;
+        //city name
+        if(row_counter ==1){return d;}
+        //median listing price (or some other metric)
+        if(row_counter ==2){return format_money(d);}
+        // since selected date
+        if(row_counter ==3){return format_decimal(d) + '%';}
+        // since peak and reset
+        if(row_counter ==4){
+          row_counter = 0;
+          return format_decimal(d) + '%';
+        }
+       })
+       .style('text-align','right');
+    });
+    
+    /////////////////////////////////////////////////////////////////////////////////////
+
+}
+
+d3.select(self.frameElement).style("height", height + "px");
+
+// Metric Control
+$("#metric").on("change", function(){
+  //console.log(this.value);
+  if(this.value == "Median Listing Prices"){selected_metric = 'MEDIANLISTINGPRICE_ALLHOMES'};
+  if(this.value == "2 Bedroom Prices"){selected_metric = '2BEDROOM' };
+  if(this.value == "Rental Prices"){selected_metric = 'MEDIANRENTALPRICE_ALLHOMES' };
+  if(this.value == "Foreclosures per 10000"){selected_metric = 'HOMESSOLDASFORECLOSURESRATIO_ALLHOMES'};
+  console.log(selected_metric);
+  update(originalData);
+});
+
+// Slider Control
+$("input").on("change input",function(){
+  
+  var inputs = d3.selectAll("input")[0];
+  //console.log(inputs);
+
+  for (var i = 0; i < inputs.length; i++) {
+    if(inputs[i].type == "range"){
+        //console.log(inputs[i].value);
+        sliderValue = inputs[i].value;
+        console.log(sliderValue);
+        console.log(sliderDateTranslate[sliderValue]);
+
+        var year = sliderDateTranslate[sliderValue].slice(0,4)
+        var month = monthTranslate[sliderDateTranslate[sliderValue].slice(5,7)]
+        console.log(year);
+        console.log(month);
+
+        document.getElementById('date').innerText = month +" "+ year;
+    }
+  }
+
+  update(originalData);
+});
+
+// Autoplay Functions
+var loop;
+// Play and Pause Control -- need to call update!
+$("#play_button").on("click", function(){
+  loop = setInterval(function(){autoplay();}, 250)
+
+  function autoplay(){
+    if(sliderValue < 74){
+      sliderValue++;
+      $(".range_length").val(sliderValue);
+      update(originalData);
+    }
+    if(sliderValue == 73){
+      clearInterval(loop);
+      sliderValue = 1;
+      $(".range_length").val(1);
+      update(originalData);
+    }
+  }
+})
+
+$("#pause_button").on("click", function(){
+  clearInterval(loop);
+  update(originalData);
+})
+
+$("#stop_button").on("click", function(){
+  clearInterval(loop);
+  sliderValue = 1;
+  $(".range_length").val(1);
+  update(originalData);
+})
+
+
+// Highlighting functions
+function highlight(d){
+  //console.log(originalData[0]);
+  //console.log(d);
+  selectedCityData = d;
+  selectedCity = d.city_name;
+
+  // deselect all items
+  d3.selectAll(".circle-bubble").style("fill", function(d) { return "red"; })
+  d3.selectAll(".line").style("stroke", function(d) { return "#DDDDDD"; })
+  d3.selectAll("tr").style("background-color", function(d) { return "white"; })
+  d3.selectAll(".chart-text").style('opacity',0.2)
+
+  // select specific items
+  d3.selectAll("#"+d.city_name+"_map").style("fill", function(d) { return "#FFAC00"; })
+  d3.selectAll("#"+d.city_name+"_chart").style("stroke", function(d) { return "#FFAC00"; })
+  d3.selectAll("#"+d.city_name+"_table").style("background-color", function(d) { return "#FFAC00"; })
+  d3.selectAll("#"+d.city_name+"_text").style("color", function(d) { return "#FFAC00"; }).style('opacity',1)
+
+  d3.selectAll("#selected_area").select("svg").remove();
+
+  var margin = {top: 20, right: 20, bottom: 30, left: 55},
+      width = 490 - margin.left - margin.right,
+      height = 150 - margin.top - margin.bottom;
+
+  var parseDate = d3.time.format("%d-%b-%y").parse,
+      parseDateNew = d3.time.format("%Y-%m-%d").parse,
+      bisectDate = d3.bisector(function(d) { return d.date; }).left,
+      formatValue = d3.format(",.2f"),
+      formatCurrency = function(d) { return "$" + formatValue(d); };
+
+  var x = d3.time.scale()
+      .range([0, width]);
+
+  var y = d3.scale.linear()
+      .range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+      .scale(x)
+      .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+      .scale(y)
+      .orient("left");
+
+  var line = d3.svg.line()
+      .x(function(d) { return x(d.date); })
+      .y(function(d) { return y(d.value); });
+
+  var svg = d3.select("#selected_area").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    selectedData = [];
+    for (var i = 1; i < 74; i++) {
+      dataObject ={};
+      dataObject['date'] = parseDateNew(sliderDateTranslate[i]);
+      dataObject['metric']=selected_metric;
+      dataObject['value']=d[selected_metric][sliderDateTranslate[i]];
+      if(!dataObject.value){dataObject['value']= 0}
+      selectedData.push(dataObject);
+    };
+    //console.log(selectedData);
+
+    console.log(selected_metric);
+
+    var data = selectedData;
+
+    x.domain([data[0].date, data[data.length - 1].date]);
+    if(selected_metric == 'MEDIANLISTINGPRICE_ALLHOMES'){y.domain([0,1000000])}
+    if(selected_metric == '2BEDROOM'){y.domain([0,1000000])}
+    if(selected_metric == 'MEDIANRENTALPRICE_ALLHOMES'){y.domain([0,10000])}
+    if(selected_metric =='HOMESSOLDASFORECLOSURESRATIO_ALLHOMES'){y.domain([0,100]);};
+    //y.domain([0,1000000])
+    //y.domain(d3.extent(data, function(d) { return d.value; }));
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        // .text(function(d){
+        //     if(selected_metric = 'MEDIANLISTINGPRICE_ALLHOMES'){ return 'Median Listing Price($)'};
+        //     if(selected_metric = '2BEDROOM'){ return 'Two Bedroom Price ($)'};
+        //     if(selected_metric = 'MEDIANRENTALPRICE_ALLHOMES'){ return 'Meidan Rental Price($)'};
+        //     if(selected_metric = 'HOMESSOLDASFORECLOSURESRATIO_ALLHOMES'){ return 'Foreclosures Per 10,000 Homes'};
+        // });
+
+    svg.append("path")
+        .datum(data)
+        .attr("class", "line")
+        .attr("d", line);
+
+    var focus = svg.append("g")
+        .attr("class", "focus")
+        .style("display", "none");
+
+    focus.append("circle")
+        .attr("r", 4.5);
+
+    focus.append("text")
+        .attr("x", 9)
+        .attr("dy", ".35em");
+
+    svg.append("rect")
+        .attr("class", "overlay")
+        .attr("width", width)
+        .attr("height", height)
+        .on("mouseover", function() { focus.style("display", null); })
+        .on("mouseout", function() { focus.style("display", "none"); })
+        .on("mousemove", mousemove);
+
+    function mousemove() {
+      var x0 = x.invert(d3.mouse(this)[0]),
+          i = bisectDate(data, x0, 1),
+          d0 = data[i - 1],
+          d1 = data[i],
+          d = x0 - d0.date > d1.date - x0 ? d1 : d0;
+      focus.attr("transform", "translate(" + x(d.date) + "," + y(d.value) + ")");
+      if(selected_metric == "HOMESSOLDASFORECLOSURESRATIO_ALLHOMES"){focus.select("text").text(d.value)}
+      else{focus.select("text").text(formatCurrency(d.value))}
+    }
+}
+
+function dataFormat(data){
+  for (var i = 0; i < data.length; i++) {
+
+  var chartObject = {};
+  chartObject['city_name'] = data[i].city_name;
+  var chartObject_values = [];
+
+  for (var j = 1; j < 74; j++) {
+    var chartObject_value = {};
+    chartObject_value['date'] = parseDate(sliderDateTranslate[j]);
+    chartObject_value['metric'] = data[i][selected_metric][sliderDateTranslate[j]];
+    chartObject_values.push(chartObject_value);
+  };
+
+  chartObject['values'] = chartObject_values;
+  chartData.push(chartObject);
+  };
+}
+
+function percentageDataFormat(data){
+  chartDataPercentage = [];
+  for (var i = 0; i < data.length; i++) {
+    var chartObject = {};
+    chartObject['city_name'] = data[i].city_name;
+    var chartObject_values = [];
+
+    // Uses the current sliderValue to acquire the current city's metric value at a certain date
+    // all further values will be compared to this metric value to produce percentage change values
+    var benchmark = data[i][selected_metric][sliderDateTranslate[sliderValue]];
+
+    for (var j = 1; j < 74; j++) {
+      var chartObject_value = {};
+
+      chartObject_value['date'] = parseDate(sliderDateTranslate[j]);
+      chartObject_value['metric'] = data[i][selected_metric][sliderDateTranslate[j]]/benchmark * 100;
+
+      if(!chartObject_value['metric']){chartObject_value['metric'] = 100};
+
+      chartObject_values.push(chartObject_value);
+    };
+    chartObject['values'] = chartObject_values;
+    chartDataPercentage.push(chartObject);
+  };
+}
+
+function update(data){
+
+    //console.log(data);
+    originalData = data;
+
+
+    ///////////////////////////////// MAP ////////////////////////////////////////////////////
+    svg_map.selectAll(".circle-bubble").selectAll('title').remove();
+    svg_map
+    .selectAll(".circle-bubble")
+       .data(data)
+       .attr("id", function(d){return d.city_name+"_map"})
+       .attr("cx", function(d) {
+          return projection([d.longitude, d.latitude])[0];
+       })
+       .attr("cy", function(d) {
+          return projection([d.longitude, d.latitude])[1];
+       })
+       .transition().duration(100)
+       .attr("r", function(d){
+          if(!d[selected_metric][sliderDateTranslate[sliderValue]]){return 0}
+          //console.log(d[selected_metric]);
+          else if(selected_metric == "MEDIANRENTALPRICE_ALLHOMES"){return d[selected_metric][sliderDateTranslate[sliderValue]]/100}
+          else if(selected_metric == "MEDIANLISTINGPRICE_ALLHOMES"){return d[selected_metric][sliderDateTranslate[sliderValue]]/20000}
+          else if(selected_metric == "2BEDROOM"){return d[selected_metric][sliderDateTranslate[sliderValue]]/20000}
+          else if(selected_metric == "HOMESSOLDASFORECLOSURESRATIO_ALLHOMES"){return d[selected_metric][sliderDateTranslate[sliderValue]]/2}
+
+       })
+    svg_map.selectAll(".circle-bubble")
+      .data(data)
+      //.style("fill", "red")
+       .on("click", function(d){
+          highlight(d);
+        })
+       .append("title")
+        .text(function(d) {
+          //console.log(d);
+          //legendData.push(d[selected_metric][sliderDateTranslate[sliderValue]]);
+          return d.city_name + "\n"+ selected_metric+": " + "$"+formatNumber(d[selected_metric][sliderDateTranslate[sliderValue]]);
+        })
+
+  svg_map.selectAll(".legend").remove();
+
+  // var radius = d3.scale.linear()
+  //     .domain([0, 800000])
+  //     .range([0, 40]);
+
+  // var svg_map = d3.select("#map_area").append("svg")
+  //     .attr("width", width)
+  //     .attr("height", height);
+
+  // var legend = svg_map.append("g")
+  //     .attr("class", "legend")
+  //     .attr("transform", "translate(" + (width - 50) + "," + (height - 20) + ")")
+  //   .selectAll("g")
+  //     .data([200000, 400000, 800000])
+  //   .enter().append("g");
+
+  // legend.append("circle")
+  //     .attr("cy", function(d) { return -radius(d); })
+  //     .attr("r", radius);
+
+  // legend.append("text")
+  //     .attr("y", function(d) { return -2 * radius(d); })
+  //     .attr("dy", "1.3em")
+  //     .text(d3.format(".1s"));
+  ///////////////////////////////// ////////////////////////////////////////////////////////
+  ///////////////////////////////// Chart ////////////////////////////////////////////////////
+
+    var initial_chartData = [];
+
+    for (var i = 1; i < 74; i++) {
+      var chartObject = {};
+      chartObject['date'] = parseDate(sliderDateTranslate[i]);
+      for (var j = 0; j < originalData.length; j++) {
+        chartObject[originalData[j].city_name] = originalData[j][selected_metric][sliderDateTranslate[i]]
+      };
+      initial_chartData.push(chartObject);
+    };
+
+    percentageDataFormat(originalData);
+    var cities = chartDataPercentage;
+ 
+    svg_chart.selectAll(".line").data(cities)
+        .transition().duration(250)
+        .attr("d", function(d) { return line(d.values); })
+
+    svg_chart.selectAll(".line").data(cities)
+        // .style("stroke", function(d) { 
+        //   return "#DDDDDD"
+        // })
+        .on("click", function(d){
+          console.log(d);
+          highlight(d);
+        })
+
+    svg_chart.selectAll(".chart-text").data(cities)
+        .datum(function(d) { return {city_name: d.city_name, value: d.values[d.values.length - 1]}; })
+        .transition().duration(250)
+        .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.metric) + ")"; })
+        .attr("x", 3)
+        .attr("dy", ".35em")
+        //.style("opacity", 0.6)
+        .attr("class","chart-text")
+        .attr("id", function(d){return d.city_name+"_text"})
+        .text(function(d) { 
+          return d.city_name.slice(0,d.city_name.length - 2); 
+        });
+    ///////////////////////////////// ////////////////////////////////////////////////////////
+  ///////////////////////////////// Selected City Chart //////////////////////////////////////
+
+  d3.selectAll("#selected_area").select("svg").remove();
+  if (selectedCityData){highlight(selectedCityData);}
+  ///////////////////////////////// ////////////////////////////////////////////////////////
+  ///////////////////////////////// Table ////////////////////////////////////////////////////
+
+  //console.log(data);
+    d3.select("#table_area").selectAll("table").remove();
+    var table = d3.select("#table_area").append("table");
+        thead = table.append("thead");
+        tbody = table.append("tbody");
+
+    thead.append("th").text("City").style('text-align','right');
+    thead.append("th").text(function(d){
+      if(selected_metric == "MEDIANRENTALPRICE_ALLHOMES"){return "Median Rental Price"}
+      if(selected_metric == "MEDIANLISTINGPRICE_ALLHOMES"){return "Median Listing Price"}
+      if(selected_metric == "2BEDROOM"){return "2 Bedroom Home Price"}
+      if(selected_metric == "HOMESSOLDASFORECLOSURESRATIO_ALLHOMES"){return "Foreclosures per 10,000"}
+    })
+                      .style('text-align','right');
+    thead.append("th").text("Since"+" "+sliderDateTranslate[sliderValue]).style('text-align','right');
+    thead.append("th").text("Since Peak").style('text-align','right');
+
+    var tr = tbody.selectAll("tr")
+        .data(data)
+        .enter().append("tr")
+        .attr("id",function(d){return d.city_name+"_table"})
+        .style("background-color", function(d){
+          if(d.city_name == selectedCity){return "#FFAC00"}
+        })
+        .on("click", function(d){
+          highlight(d);
+        })
+
+    var row_counter = 0;
+    var format_decimal = d3.format(".3n");
+    var format_money = d3.format("$,.4r")
+
+    var td = tr.selectAll("td")
+       .data(function(d) { 
+         //console.log(d.city_name.length-2);
+
+         var peak = 0;
+         for (var i = 1; i < 74; i++) {
+           if (d[selected_metric][sliderDateTranslate[i]] > peak){
+            peak = d[selected_metric][sliderDateTranslate[i]]
+           }
+         };
+
+         var changeSinceDate;
+         if (d[selected_metric][sliderDateTranslate[73]]/d[selected_metric][sliderDateTranslate[sliderValue]] < 1){
+            changedSinceDate = (((d[selected_metric][sliderDateTranslate[73]]/d[selected_metric][sliderDateTranslate[sliderValue]]) - 1)) * 100;
+         } else if (d[selected_metric][sliderDateTranslate[73]]/d[selected_metric][sliderDateTranslate[sliderValue]] == 1){
+            changedSinceDate = 0;
+         } else {
+            changedSinceDate = d[selected_metric][sliderDateTranslate[73]]/d[selected_metric][sliderDateTranslate[sliderValue]] * 100;
+         }
+
+         var sincePeak;
+         if (d[selected_metric][sliderDateTranslate[73]]/peak < 1){
+            sincePeak = ((d[selected_metric][sliderDateTranslate[73]]/peak) -1)*100;
+         } else if (d[selected_metric][sliderDateTranslate[73]]/peak == 1) {
+            sincePeak = 0;
+         } else {
+            sincePeak = d[selected_metric][sliderDateTranslate[73]]/peak * 100;
+         }
+
+         return [
+          d.city_name.slice(0,d.city_name.length-2),
+          d[selected_metric][sliderDateTranslate[sliderValue]],
+          changedSinceDate,
+          sincePeak
+         ]
+       })
+       //TODO format individual rows?
+       .enter().append("td")
+       .text(function(d) { 
+        row_counter++;
+        //city name
+        if(row_counter ==1){return d;}
+        //median listing price (or some other metric)
+        if(row_counter ==2){
+          if(selected_metric == "HOMESSOLDASFORECLOSURESRATIO_ALLHOMES"){
+            return d;
+          }else {
+            return format_money(d);
+          }
+        }
+        // since selected date
+        if(row_counter ==3){return format_decimal(d) + '%';}
+        // since peak and reset
+        if(row_counter ==4){
+          row_counter = 0;
+          return format_decimal(d) + '%';
+        }
+       })
+       .style('text-align','right')
+       // .style('background-color', function(d){
+       //    if(!d){return "#ddd"}else{return "none"}
+       // })
+       .style('color', function(d){
+          if(!d){return "white"}else{return "none"}
+       });
+
+}
+
+
+</script>
+</body>

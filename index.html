@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href='http://fonts.googleapis.com/css?family=Vollkorn|Open+Sans:400,700' rel='stylesheet' type='text/css'>
+
+	<link rel="stylesheet" href="css/reset.css"> <!-- CSS reset -->
+	<link rel="stylesheet" href="css/style.css"> <!-- Resource style -->
+	<script src="js/modernizr.js"></script> <!-- Modernizr -->
+  	
+	<title>THE RENT IS TOO DAMN HIGH</title>
+<style>
+
+.graticule {
+fill: none;
+stroke: #999;
+}
+
+.states {
+fill: none;
+stroke: #fff;
+stroke-linejoin: round;
+}
+
+.counties :hover {
+fill: yellow !important;
+}
+
+#expand{
+	cursor: pointer;
+}
+
+</style>
+</head>
+<body>
+	<main class="cd-main">
+		<header id="intro">
+			<h1 style="padding-top:40px">THE RENT IS TOO DAMN HIGH</h1>
+			<h2>A story of American Housing Markets Post Mortgage Crisis</h2>
+			<div id="expand">▼<div>
+		</header>
+
+		<ul class="cd-gallery">
+			<li class="cd-item">
+				<a href="item-1.html">
+					<div>
+						<h2>The Mortgage Crisis</h2>
+						<p>Who recovered, who didn't</p>
+						<b>View More</b>
+					</div>
+				</a>
+			</li>
+
+			<li class="cd-item">
+				<a href="item-2.html">
+					<div>
+						<h2>Let it Burn</h2>
+						<p>Cities empirically prone to shock</p>
+						<b>View More</b>
+					</div>
+				</a>
+			</li>
+
+			<li class="cd-item">
+				<a class="dark-text" href="item-3.html">
+					<div>
+						<h2>About this Project</h2>
+						<p>D3.js Visualizations</p>
+						<b>View More</b>
+					</div>
+				</a>
+			</li>
+
+			<li class="cd-item">
+				<a href="item-4.html">
+					<div>
+						<h2>Finally, Rent</h2>
+						<p>Where is the rent too damn high?</p>
+						<b>View More</b>
+					</div>
+				</a>
+			</li>
+		</ul> 
+	</main> 
+
+	<div class="cd-folding-panel">
+		
+		<div class="fold-left"></div>
+		<div class="fold-right"></div>		
+		<div class="cd-fold-content">
+		</div>
+
+		<a class="cd-close" href="#0"></a>
+	</div>
+
+<script src="js/jquery-2.1.1.js"></script>
+<script src="js/main.js"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/queue.v1.min.js"></script>
+<script src="http://d3js.org/d3.geo.projection.v0.min.js"></script>
+<script src="http://d3js.org/topojson.v0.min.js"></script>
+<script>
+
+var expanded = 0;
+$(document).ready(function(){
+  $("#expand").on('click', function(){
+  	if (expanded == 0){
+  		expanded = 1;
+    	$("#intro").animate({height:"700px"},200);
+    	$("#expand").html("▲<p> Use Arrow Keys to Navigate, Hover over counties for more information</p>");
+  	} else if (expanded == 1){
+  		expanded = 0;
+    	$("#intro").animate({height:"300px"},200);
+    	$("#expand").text("▼");
+  	}
+  });
+});
+
+var originalData;
+var setCounties;
+
+var rateById = d3.map();
+
+var initial_position_lon = 82;
+var initial_position_lat = -34.50;
+
+var width = 1400,
+    height = 600;
+    
+var projection = d3.geo.satellite()
+    .distance(1.1)
+    .scale(4500)
+    .rotate([82.00, -34.50, 32.12])
+    .center([-2, 5])
+    .tilt(30)
+    .clipAngle(25);
+
+var graticule = d3.geo.graticule()
+    .extent([[-113, 27], [-47 + 1e-6, 57 + 1e-6]])
+    .step([3, 3]);
+
+var fill = d3.scale.sqrt()
+    .domain([0, 5000])
+    .range(["#bcd0ff", "#002372"]);
+
+var path = d3.geo.path().projection(projection);
+
+var svg = d3.select("#intro").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+    
+svg.append("path")
+    .datum(graticule)
+    .attr("class", "graticule")
+    .attr("d", path);
+
+queue()
+	.defer(d3.json,"us_satellite.json")
+	.defer(d3.csv,"county_data_scraped.csv", function(d){
+		//console.log(d.date);
+		if (d.date == "2014-11-30 00:00:00"){
+			//console.log("hello");
+			//console.log(d["Median Sale Price"]);
+			rateById.set(d.fips, +d["Median Rent, Homes Listed for Rent"])
+		}
+		//debugger;
+
+	})
+	.await(ready)
+
+var g = svg.append("g");
+
+function ready(error,us){
+
+	setCounties = topojson.object(us, us.objects.counties).geometries;
+
+	var densities = setCounties
+	.map(function(d) { 
+		//console.log(d.id);
+		//console.log(rateById.get(d.id));
+		return d.metric = rateById.get(d.id); 
+	})
+	.sort(function(a, b) { return a - b; });
+
+	//console.log(counties);
+	originalData = us;
+	
+	g.attr("class", "counties")
+    .selectAll("path")
+      .data(setCounties)
+    .enter().append("path")
+      .attr("d", path)
+      .style("fill", function(d) { 
+      	if(!d.metric){ return "lightgrey"}
+      	return fill(d.metric);
+      })
+      .append("title").text(function(d) { 
+      		if (!d.metric){return "Sorry, no information available"}
+      		if (d.metric==0){return "Sorry, no information available"}
+            return "Median Rent for 2014: "+"$"+d.metric; 
+       });;
+
+  svg.append("path")
+      .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a.id !== b.id; }))
+      .attr("class", "states")
+      .attr("d", path);
+
+  //update(82);
+
+  $(document).keydown(function(e) {
+    // left arrow key
+    if(e.keyCode == 37){
+    	initial_position_lon = initial_position_lon + 5;
+    	update(initial_position_lon, initial_position_lat);
+    }
+    // right arrow key
+    if(e.keyCode == 39){
+    	initial_position_lon = initial_position_lon - 5;
+    	update(initial_position_lon, initial_position_lat);
+    }
+    // up arrow key
+    if(e.keyCode == 38){
+    	initial_position_lat = initial_position_lat - 1;
+    	update(initial_position_lon, initial_position_lat);
+    }
+    // down arrow key
+	if(e.keyCode == 40){
+		initial_position_lat = initial_position_lat + 1;
+    	update(initial_position_lon, initial_position_lat);
+    }
+    console.log(e.keyCode);
+	});
+}
+
+function update(rotated_value_lon, rotated_value_lat) {
+	console.log([rotated_value_lon, rotated_value_lat]);
+
+	var projection = d3.geo.satellite()
+	    .distance(1.1)
+	    .scale(4500)
+	    .rotate([rotated_value_lon,rotated_value_lat, 32.12])
+	    .center([-2, 5])
+	    .tilt(30)
+	    .clipAngle(25);
+
+	var graticule = d3.geo.graticule()
+	    .extent([[-113, 27], [-47 + 1e-6, 57 + 1e-6]])
+	    .step([3, 3]);
+
+	var path = d3.geo.path().projection(projection);
+
+	// var svg = d3.select("#intro").append("svg")
+	//     .attr("width", width)
+	//     .attr("height", height);
+	   
+	var svg = d3.select("#intro");
+	
+	svg.selectAll('.graticule')
+	    .datum(graticule)
+	    .attr("d", path);
+
+	console.log(originalData);
+
+	svg.selectAll(".counties")
+	   .selectAll("path")
+	      .data(setCounties)
+	      .attr("d", path)
+	      .style("fill", function(d) { 
+	        if(!d.metric){ return "lightgrey"}
+      		return fill(d.metric); 
+	      });
+
+	svg.selectAll(".states")
+	      .datum(topojson.mesh(originalData, originalData.objects.states, function(a, b) { return a.id !== b.id; }))
+	      .attr("d", path);
+}
+
+</script>
+</body>
+</html>
